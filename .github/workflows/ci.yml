@@ -73,8 +73,10 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction --no-progress --no-dev
 
+      # --force: migrate:up is marked destructive and blocks on a confirmation
+      # prompt where there is no TTY, which is every CI runner.
       - name: Migrate
-        run: php tempest migrate:up
+        run: php tempest migrate:up --force
 
       - name: Start the server
         run: php tempest serve --host=127.0.0.1 --port=8000 &> /tmp/server.log &
@@ -134,7 +136,7 @@ jobs:
 
       - name: Server log on failure
         if: failure()
-        run: cat /tmp/server.log
+        run: cat /tmp/server.log || true
 
   docker:
     name: Docker build
@@ -155,26 +157,39 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: The image boots and serves
+      - name: The image serves HTTP
         run: |
           docker run -d --name feed -p 8000:80 \
             -e FEEDGEN_HOSTNAME=feed.ci.test \
             -e FEEDGEN_PUBLISHER_DID=did:plc:ci \
             kodamachi-feed:ci
-          for i in $(seq 1 45); do
+          for i in $(seq 1 60); do
             if curl -sf --max-time 2 \
               http://127.0.0.1:8000/xrpc/app.bsky.feed.describeFeedGenerator > /dev/null 2>&1; then
-              echo "Container ready after ${i}s"
+              echo "Serving after ${i}s"
               curl -sf http://127.0.0.1:8000/xrpc/app.bsky.feed.describeFeedGenerator | jq .
-              # Both processes have to be up: a container serving HTTP while
-              # the collector is dead looks healthy and indexes nothing.
-              docker exec feed supervisorctl -c /etc/supervisor/supervisord.conf status
-              docker exec feed supervisorctl -c /etc/supervisor/supervisord.conf status collector | grep RUNNING
               exit 0
             fi
             sleep 1
           done
-          docker logs feed
+          exit 1
+
+      # A container serving HTTP while the collector is dead looks perfectly
+      # healthy and indexes nothing, so this is checked separately. supervisord
+      # reports STARTING until the program has survived its startsecs, which is
+      # longer than the web server takes to answer, so it is waited on rather
+      # than sampled once.
+      - name: The collector comes up alongside it
+        run: |
+          for i in $(seq 1 60); do
+            if docker exec feed supervisorctl -c /etc/supervisor/supervisord.conf \
+              status collector | grep -q RUNNING; then
+              echo "Collector running after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          docker exec feed supervisorctl -c /etc/supervisor/supervisord.conf status || true
           exit 1
 
       - name: Container log on failure
