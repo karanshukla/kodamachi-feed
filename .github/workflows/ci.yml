@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: gmp, openssl, pdo_sqlite, mbstring, intl, pcntl
+          coverage: none
+
+      - name: Validate composer.json
+        run: composer validate --strict
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress
+
+      - name: Lint
+        run: find app tests public -name '*.php' -print0 | xargs -0 -n1 -P4 php -l > /dev/null
+
+      - name: Test
+        run: vendor/bin/phpunit --no-coverage
+
+  integration:
+    name: Boot and serve
+    runs-on: ubuntu-latest
+
+    env:
+      ENVIRONMENT: production
+      BASE_URI: http://127.0.0.1:8000
+      FEEDGEN_HOSTNAME: feed.ci.test
+      FEEDGEN_PUBLISHER_DID: did:plc:ci
+      FEEDGEN_RECORD_KEY: kodamachi
+      FEEDGEN_SQLITE_LOCATION: var/ci.sqlite
+      FEEDGEN_REQUIRE_AUTH: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: gmp, openssl, pdo_sqlite, mbstring, intl, pcntl
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --no-dev
+
+      - name: Migrate
+        run: php tempest migrate:up
+
+      - name: Start the server
+        run: php tempest serve --host=127.0.0.1 --port=8000 &> /tmp/server.log &
+
+      - name: Wait for the server
+        run: |
+          for i in $(seq 1 30); do
+            if curl -sf --max-time 2 \
+              http://127.0.0.1:8000/xrpc/app.bsky.feed.describeFeedGenerator > /dev/null 2>&1; then
+              echo "Ready after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not start in time:"
+          cat /tmp/server.log
+          exit 1
+
+      - name: describeFeedGenerator advertises a feed
+        run: |
+          response=$(curl -sf http://127.0.0.1:8000/xrpc/app.bsky.feed.describeFeedGenerator)
+          echo "$response" | jq .
+          echo "$response" | jq -e '.feeds | length > 0' > /dev/null
+          echo "$response" | jq -e '.did == "did:web:feed.ci.test"' > /dev/null
+
+      - name: getFeedSkeleton returns a feed
+        run: |
+          feed="at://did:plc:ci/app.bsky.feed.generator/kodamachi"
+          response=$(curl -sf --get \
+            --data-urlencode "feed=${feed}" --data-urlencode "limit=10" \
+            http://127.0.0.1:8000/xrpc/app.bsky.feed.getFeedSkeleton)
+          echo "$response" | jq .
+          echo "$response" | jq -e 'has("feed")' > /dev/null
+
+      - name: getFeedSkeleton rejects a feed we do not serve
+        run: |
+          feed="at://did:plc:someone/app.bsky.feed.generator/other"
+          status=$(curl -s -o /tmp/body.json -w '%{http_code}' --get \
+            --data-urlencode "feed=${feed}" \
+            http://127.0.0.1:8000/xrpc/app.bsky.feed.getFeedSkeleton)
+          cat /tmp/body.json
+          test "$status" = "400"
+          jq -e '.error == "UnsupportedAlgorithm"' /tmp/body.json > /dev/null
+
+      - name: An unverifiable token still gets the feed
+        run: |
+          feed="at://did:plc:ci/app.bsky.feed.generator/kodamachi"
+          status=$(curl -s -o /dev/null -w '%{http_code}' --get \
+            -H 'Authorization: Bearer not.a.jwt' \
+            --data-urlencode "feed=${feed}" \
+            http://127.0.0.1:8000/xrpc/app.bsky.feed.getFeedSkeleton)
+          test "$status" = "200"
+
+      - name: The DID document points at this service
+        run: |
+          curl -sf http://127.0.0.1:8000/.well-known/did.json | jq -e '.id == "did:web:feed.ci.test"'
+
+      - name: Server log on failure
+        if: failure()
+        run: cat /tmp/server.log
+
+  docker:
+    name: Docker build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: false
+          load: true
+          tags: kodamachi-feed:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: The image boots and serves
+        run: |
+          docker run -d --name feed -p 8000:80 \
+            -e FEEDGEN_HOSTNAME=feed.ci.test \
+            -e FEEDGEN_PUBLISHER_DID=did:plc:ci \
+            kodamachi-feed:ci
+          for i in $(seq 1 45); do
+            if curl -sf --max-time 2 \
+              http://127.0.0.1:8000/xrpc/app.bsky.feed.describeFeedGenerator > /dev/null 2>&1; then
+              echo "Container ready after ${i}s"
+              curl -sf http://127.0.0.1:8000/xrpc/app.bsky.feed.describeFeedGenerator | jq .
+              # Both processes have to be up: a container serving HTTP while
+              # the collector is dead looks healthy and indexes nothing.
+              docker exec feed supervisorctl -c /etc/supervisor/supervisord.conf status
+              docker exec feed supervisorctl -c /etc/supervisor/supervisord.conf status collector | grep RUNNING
+              exit 0
+            fi
+            sleep 1
+          done
+          docker logs feed
+          exit 1
+
+      - name: Container log on failure
+        if: failure()
+        run: docker logs feed || true

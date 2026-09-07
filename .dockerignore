@@ -1,0 +1,10 @@
+.git
+.github
+/vendor
+/var
+/.tempest
+/.env
+/tests
+.phpunit.result.cache
+README.md
+CLAUDE.md

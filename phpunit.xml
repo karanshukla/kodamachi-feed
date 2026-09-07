@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.3/phpunit.xsd"
+        bootstrap="vendor/autoload.php"
+        colors="true"
+        failOnWarning="true"
+        failOnRisky="true"
+        displayDetailsOnTestsThatTriggerDeprecations="true"
+        displayDetailsOnTestsThatTriggerErrors="true"
+        displayDetailsOnTestsThatTriggerNotices="true"
+        displayDetailsOnTestsThatTriggerWarnings="true"
+>
+  <testsuites>
+    <testsuite name="Unit">
+      <directory suffix="Test.php">./tests/Unit</directory>
+    </testsuite>
+    <testsuite name="Integration">
+      <directory suffix="Test.php">./tests/Integration</directory>
+    </testsuite>
+  </testsuites>
+  <source>
+    <include>
+      <directory suffix=".php">./app</directory>
+    </include>
+  </source>
+  <php>
+    <env name="ENVIRONMENT" value="testing" force="true"/>
+    <env name="BASE_URI" value="http://localhost" force="true"/>
+    <env name="CACHE" value="null" force="true"/>
+    <env name="FEEDGEN_HOSTNAME" value="feed.test" force="true"/>
+    <env name="FEEDGEN_PUBLISHER_DID" value="did:plc:publisher" force="true"/>
+    <env name="FEEDGEN_SQLITE_LOCATION" value=":memory:" force="true"/>
+    <env name="FEEDGEN_RECORD_KEY" value="kodamachi" force="true"/>
+    <env name="FEEDGEN_MATCH_TEXT" value="kodamachi" force="true"/>
+    <env name="FEEDGEN_MATCH_ALT" value="kodamachi" force="true"/>
+    <env name="FEEDGEN_HANDLE" value="" force="true"/>
+    <env name="FEEDGEN_APP_PASSWORD" value="" force="true"/>
+  </php>
+</phpunit>

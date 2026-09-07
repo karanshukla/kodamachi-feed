@@ -1,0 +1,8 @@
+/.tempest
+/vendor/
+/.env
+/.phpunit.result.cache
+/var/*
+!/var/.gitignore
+.idea
+.DS_Store

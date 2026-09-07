@@ -1,0 +1,50 @@
+name: Feed health check
+
+# Checks the deployed feed, not the code. Set the FEED_BASE_URL repository
+# variable to the service's public origin to switch it on.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 */6 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check whether a deployment is configured
+        id: config
+        run: |
+          if [ -z "${{ vars.FEED_BASE_URL }}" ]; then
+            echo "::notice::FEED_BASE_URL is not set; skipping."
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: describeFeedGenerator advertises a feed
+        if: steps.config.outputs.configured == 'true'
+        id: describe
+        run: |
+          response=$(curl -sf --max-time 15 \
+            "${{ vars.FEED_BASE_URL }}/xrpc/app.bsky.feed.describeFeedGenerator")
+          echo "$response" | jq .
+          echo "$response" | jq -e '.feeds | length > 0' > /dev/null
+          echo "feed_uri=$(echo "$response" | jq -r '.feeds[0].uri')" >> "$GITHUB_OUTPUT"
+
+      - name: The feed serves a skeleton
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          response=$(curl -sf --max-time 15 --get \
+            --data-urlencode "feed=${{ steps.describe.outputs.feed_uri }}" \
+            --data-urlencode "limit=1" \
+            "${{ vars.FEED_BASE_URL }}/xrpc/app.bsky.feed.getFeedSkeleton")
+          echo "$response" | jq .
+          echo "$response" | jq -e 'has("feed")' > /dev/null
+
+      - name: The DID document resolves
+        if: steps.config.outputs.configured == 'true'
+        run: curl -sf --max-time 15 "${{ vars.FEED_BASE_URL }}/.well-known/did.json" | jq -e 'has("id")'
