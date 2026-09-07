@@ -42,6 +42,11 @@ jobs:
       - name: Test
         run: vendor/bin/phpunit --no-coverage
 
+      # CodeQL has no PHP analyzer, so dependency advisories are the security
+      # gate here rather than static analysis of our own code.
+      - name: Audit dependencies
+        run: composer audit --no-interaction
+
   integration:
     name: Boot and serve
     runs-on: ubuntu-latest
