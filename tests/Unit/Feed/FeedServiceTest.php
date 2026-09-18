@@ -11,6 +11,7 @@ use App\Post\FeedPost;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 use Tests\Support\InMemoryFeedPostRepository;
+use Tests\Support\RecordingATProtoClient;
 
 /**
  * @internal
@@ -117,8 +118,50 @@ final class FeedServiceTest extends TestCase
         }
     }
 
-    private function service(): FeedService
+    #[Test]
+    public function publishes_to_the_publishers_own_pds_with_its_avatar(): void
     {
+        $avatar = tempnam(sys_get_temp_dir(), 'avatar') . '.png';
+        file_put_contents($avatar, 'not really a png');
+        $blob = ['$type' => 'blob', 'ref' => ['$link' => 'bafkavatar'], 'mimeType' => 'image/png', 'size' => 16];
+        $client = new RecordingATProtoClient([
+            ['blob' => $blob],
+            ['uri' => 'at://did:plc:publisher/app.bsky.feed.generator/kodamachi', 'cid' => 'cid'],
+        ]);
+
+        try {
+            $this->service($client, pdsUrl: 'https://pds.example', avatarPath: $avatar)->publish();
+        } finally {
+            unlink($avatar);
+        }
+
+        [$upload, $put] = $client->requests;
+
+        self::assertSame('https://pds.example/xrpc/com.atproto.repo.uploadBlob', (string) $upload->getUri());
+        self::assertSame('image/png', $upload->getHeaderLine('Content-Type'));
+        self::assertSame('not really a png', (string) $upload->getBody());
+
+        self::assertSame('https://pds.example/xrpc/com.atproto.repo.putRecord', (string) $put->getUri());
+        $record = json_decode((string) $put->getBody(), true)['record'];
+        self::assertSame('did:web:feed.test', $record['did']);
+        self::assertSame($blob, $record['avatar']);
+    }
+
+    #[Test]
+    public function unpublishes_from_the_publishers_own_pds(): void
+    {
+        $client = new RecordingATProtoClient([[]]);
+
+        $this->service($client, pdsUrl: 'https://pds.example')->unpublish();
+
+        self::assertSame('https://pds.example/xrpc/com.atproto.repo.deleteRecord', (string) $client->requests[0]->getUri());
+    }
+
+    private function service(
+        ?RecordingATProtoClient $client = null,
+        string $pdsUrl = 'https://bsky.social',
+        ?string $avatarPath = null,
+    ): FeedService {
         return new FeedService(
             new FeedConfig(
                 hostname: 'feed.test',
@@ -126,9 +169,11 @@ final class FeedServiceTest extends TestCase
                 publisherDid: 'did:plc:publisher',
                 textTerms: ['kodamachi'],
                 altTerms: ['kodamachi'],
+                pdsUrl: $pdsUrl,
+                avatarPath: $avatarPath,
             ),
             $this->repository,
-            ATProtoMetaClient::default(),
+            ATProtoMetaClient::default($client ?? new RecordingATProtoClient([[]])),
         );
     }
 }

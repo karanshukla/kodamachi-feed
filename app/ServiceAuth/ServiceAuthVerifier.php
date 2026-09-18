@@ -66,7 +66,10 @@ final readonly class ServiceAuthVerifier
             throw new ServiceAuthException("Token was minted for {$tokenLxm}, not {$lxm}");
         }
 
-        $this->checkSignature($jwt, $issuer);
+        // `iss` may carry a service fragment (did:plc:abc#atproto_labeler).
+        // The document to resolve is the bare DID's; with the fragment left
+        // on, a did:web issuer resolves against a hostname ending in "#...".
+        $this->checkSignature($jwt, explode('#', $issuer, 2)[0]);
 
         return new VerifiedToken(
             issuer: $issuer,

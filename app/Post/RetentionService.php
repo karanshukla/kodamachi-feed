@@ -7,6 +7,7 @@ namespace App\Post;
 use App\Feed\FeedConfig;
 use DateTimeImmutable;
 use Psr\Log\LoggerInterface;
+use Tempest\Database\Query;
 
 final readonly class RetentionService
 {
@@ -32,6 +33,10 @@ final readonly class RetentionService
                 'count' => $removed,
                 'days' => $this->config->retentionDays,
             ]);
+
+            // SQLite keeps freed pages in the file rather than returning them,
+            // and the file lives on a metered volume.
+            new Query('VACUUM')->execute();
         }
 
         return $removed;

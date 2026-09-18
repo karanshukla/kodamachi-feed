@@ -6,6 +6,7 @@ namespace App\Feed;
 
 use App\Api\RateLimiter;
 use App\Backfill\BackfillService;
+use App\Framework\DatabaseDidDocumentCache;
 use App\Post\RetentionService;
 
 /**
@@ -22,6 +23,12 @@ final class FeedMaintenance
     private const int PRUNE_INTERVAL_SECONDS = 24 * 3600;
     private const int RATE_LIMIT_SWEEP_INTERVAL_SECONDS = 3600;
 
+    /**
+     * HttpDidDocumentResolver's outer bound: past this a cached document is
+     * refetched even when the refetch fails, so keeping it serves nobody.
+     */
+    private const int DID_DOCUMENT_MAX_AGE_SECONDS = 86400;
+
     private float $lastBackfillAt = 0.0;
     private float $lastPruneAt = 0.0;
     private float $lastRateLimitSweepAt = 0.0;
@@ -30,6 +37,7 @@ final class FeedMaintenance
         private readonly BackfillService $backfill,
         private readonly RetentionService $retention,
         private readonly RateLimiter $rateLimiter,
+        private readonly DatabaseDidDocumentCache $didDocuments,
     ) {}
 
     /**
@@ -56,6 +64,7 @@ final class FeedMaintenance
         if ($now - $this->lastRateLimitSweepAt >= self::RATE_LIMIT_SWEEP_INTERVAL_SECONDS) {
             $this->lastRateLimitSweepAt = $now;
             $this->rateLimiter->forget(self::RATE_LIMIT_SWEEP_INTERVAL_SECONDS);
+            $this->didDocuments->forget(self::DID_DOCUMENT_MAX_AGE_SECONDS);
         }
 
         return microtime(true) - $startedAt;

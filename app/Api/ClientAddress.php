@@ -11,20 +11,22 @@ final class ClientAddress
     /**
      * The caller's address, as far as it can be known.
      *
-     * Behind Caddy (and behind Railway's edge in front of that) REMOTE_ADDR is
-     * the proxy, so the forwarded header is what distinguishes callers. It is
-     * client-controlled and therefore spoofable; it is used only to spread
-     * rate-limit buckets, never for authorization.
+     * Behind Railway's edge REMOTE_ADDR is the proxy, so the forwarded header
+     * is what distinguishes callers. Only its last entry is trusted: that is
+     * the one the edge appended, while everything before it came from the
+     * client. Taking the first entry let any caller pick its own rate-limit
+     * bucket per request by sending a made-up header.
      */
     public static function of(Request $request): string
     {
         $forwarded = $request->headers->get('X-Forwarded-For');
 
         if ($forwarded !== null && $forwarded !== '') {
-            $first = trim(explode(',', $forwarded)[0]);
+            $hops = explode(',', $forwarded);
+            $last = trim(end($hops));
 
-            if ($first !== '') {
-                return $first;
+            if ($last !== '') {
+                return $last;
             }
         }
 

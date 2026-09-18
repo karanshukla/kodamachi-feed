@@ -58,7 +58,14 @@ final readonly class GetFeedSkeletonController
             return XrpcError::rateLimited('Rate limit exceeded. Please try again later.');
         }
 
-        return new Json($this->feedService->getFeed($request->limit, $request->cursor)->toArray());
+        return new Json(
+            $this->feedService->getFeed($request->limit, $request->cursor)->toArray(),
+            // `private` so no shared cache (Railway's edge, the AppView's
+            // fetcher) holds a skeleton served behind an Authorization header
+            // and hands it to someone else. With one, the feed looked fresh for
+            // some accounts and stale for others depending on the node they hit.
+            headers: ['Cache-Control' => 'private, max-age=60, stale-while-revalidate=30'],
+        );
     }
 
     private function servesFeed(string $feed): bool

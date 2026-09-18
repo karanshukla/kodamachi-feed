@@ -194,10 +194,14 @@ final class JetstreamSubscription
             // "No events" and "no log line" are different states, and telling
             // them apart is the entire point: a quiet feed and a dead
             // subscription look identical without this.
-            $this->logger->info('jetstream: {events} events, {matches} matched in the last 5m (connected={connected})', [
+            // Memory rides along because this process runs for weeks: a slow
+            // leak shows up here long before it gets the container killed.
+            $this->logger->info('jetstream: {events} events, {matches} matched in the last 5m (connected={connected}, memory={memory}MB, peak={peak}MB)', [
                 'events' => $this->eventsSinceReport,
                 'matches' => $this->matchesSinceReport,
                 'connected' => $this->connected ? 'true' : 'false',
+                'memory' => round(memory_get_usage(true) / 1048576, 1),
+                'peak' => round(memory_get_peak_usage(true) / 1048576, 1),
             ]);
 
             $this->eventsSinceReport = 0;

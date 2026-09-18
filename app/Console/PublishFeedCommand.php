@@ -23,6 +23,7 @@ final class PublishFeedCommand
     {
         $this->console->info("Publishing {$this->config->feedUri()}");
         $this->console->info("  service DID: {$this->config->serviceDid}");
+        $this->console->info('  avatar:      ' . ($this->config->avatarPath ?? 'none (FEEDGEN_AVATAR is unset; an existing avatar is removed)'));
 
         if (!$this->console->confirm('Publish this feed record?')) {
             $this->console->info('Aborted');

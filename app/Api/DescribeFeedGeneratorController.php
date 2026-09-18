@@ -17,6 +17,10 @@ final readonly class DescribeFeedGeneratorController
     #[Get('/xrpc/app.bsky.feed.describeFeedGenerator')]
     public function __invoke(): Json
     {
-        return new Json($this->feedService->describeFeed()->toArray());
+        // Static metadata that only changes on a redeploy.
+        return new Json(
+            $this->feedService->describeFeed()->toArray(),
+            headers: ['Cache-Control' => 'public, max-age=3600, stale-while-revalidate=600'],
+        );
     }
 }

@@ -57,4 +57,17 @@ final class DatabaseDidDocumentCache implements DidDocumentCache
             ->insert(['did' => $did, 'document' => $encoded, 'fetched_at' => $now])
             ->execute();
     }
+
+    /**
+     * Drops documents too old to be served even as a fallback, so the table
+     * does not keep one row for every requester the feed has ever seen.
+     * Called from the collector's housekeeping, not from a request.
+     */
+    public function forget(int $olderThanSeconds): void
+    {
+        query('did_documents')
+            ->delete()
+            ->where('fetched_at < ?', time() - $olderThanSeconds)
+            ->execute();
+    }
 }
