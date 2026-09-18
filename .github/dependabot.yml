@@ -1,0 +1,27 @@
+version: 2
+
+updates:
+  # libphpsky is tracked as dev-main. Do not count on these PRs to move it:
+  # bump it by hand with `composer update aazsamir/libphpsky`.
+  - package-ecosystem: composer
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      composer-minor-and-patch:
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ['*']
+
+  # The base image tag carries the PHP version (1-php8.5). Dependabot keeps the
+  # suffix, so it proposes FrankenPHP majors only. A PHP bump stays manual.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
