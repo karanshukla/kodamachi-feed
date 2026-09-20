@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use KaranShukla\PhpAtprotoIdentity\DidDocumentResolver;
 use KaranShukla\PhpAtprotoIdentity\IdentityException;
+use KaranShukla\PhpAtprotoIdentity\Resolution\DidDocumentResolver;
 
 /**
  * Serves a scripted sequence of DID documents, and counts resolutions, so a

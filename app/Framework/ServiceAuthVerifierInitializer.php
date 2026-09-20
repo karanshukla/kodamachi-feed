@@ -7,7 +7,7 @@ namespace App\Framework;
 use App\ServiceAuth\ServiceAuthVerifier;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\HttpFactory;
-use KaranShukla\PhpAtprotoIdentity\HttpDidDocumentResolver;
+use KaranShukla\PhpAtprotoIdentity\Resolution\HttpDidDocumentResolver;
 use Tempest\Container\Container;
 use Tempest\Container\Initializer;
 

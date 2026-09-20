@@ -10,7 +10,7 @@
         "ext-pcntl": "*",
         "tempest/framework": "^3.2.1",
         "aazsamir/libphpsky": "dev-main",
-        "karanshukla/php-atproto-identity": "^0.1",
+        "karanshukla/php-atproto-identity": "^1.0",
         "firebase/php-jwt": "^7.1"
     },
     "require-dev": {

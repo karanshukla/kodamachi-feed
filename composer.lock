@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "4ae832fe9e4143487a008462e24ff26f",
+    "content-hash": "a1efbf80578f6f1850a0851c3b5f8c9c",
     "packages": [
         {
             "name": "aazsamir/libphpsky",
@@ -2176,33 +2176,36 @@
         },
         {
             "name": "karanshukla/php-atproto-identity",
-            "version": "v0.1.1",
+            "version": "v1.0.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/karanshukla/php-atproto-identity.git",
-                "reference": "690310430dce02f84f03b1cd339bd1af85e4c6f6"
+                "reference": "be9a0bc7badc69c345ea6d593ee0925e9be5c953"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/karanshukla/php-atproto-identity/zipball/690310430dce02f84f03b1cd339bd1af85e4c6f6",
-                "reference": "690310430dce02f84f03b1cd339bd1af85e4c6f6",
+                "url": "https://api.github.com/repos/karanshukla/php-atproto-identity/zipball/be9a0bc7badc69c345ea6d593ee0925e9be5c953",
+                "reference": "be9a0bc7badc69c345ea6d593ee0925e9be5c953",
                 "shasum": ""
             },
             "require": {
-                "brick/math": ">=0.12 <1.0",
+                "brick/math": ">=0.12 <2.0",
                 "ext-openssl": "*",
                 "php": ">=8.4",
                 "psr/cache": "^3.0",
                 "psr/http-client": "^1.0",
-                "psr/http-factory": "^1.0"
+                "psr/http-factory": "^1.1",
+                "tuupola/base58": "^2.2"
             },
             "require-dev": {
                 "friendsofphp/php-cs-fixer": "^3.95",
+                "guzzlehttp/guzzle": "^7.9",
                 "guzzlehttp/psr7": "^2.7",
                 "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
                 "phpunit/phpunit": "^11.5",
                 "symfony/cache": ">=7.0 <9.0",
-                "symfony/var-dumper": ">=7.2"
+                "symfony/var-dumper": ">=7.2 <9.0"
             },
             "type": "library",
             "autoload": {
@@ -2231,9 +2234,9 @@
             ],
             "support": {
                 "issues": "https://github.com/karanshukla/php-atproto-identity/issues",
-                "source": "https://github.com/karanshukla/php-atproto-identity/tree/v0.1.1"
+                "source": "https://github.com/karanshukla/php-atproto-identity/tree/v1.0.0"
             },
-            "time": "2026-09-20T17:19:04+00:00"
+            "time": "2026-09-20T22:25:14+00:00"
         },
         {
             "name": "kelunik/certificate",
@@ -7125,6 +7128,62 @@
                 }
             ],
             "time": "2026-08-28T08:32:31+00:00"
+        },
+        {
+            "name": "tuupola/base58",
+            "version": "2.2.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/tuupola/base58.git",
+                "reference": "a2fac671f14890c8fa62ac081eeeb90f42839637"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/tuupola/base58/zipball/a2fac671f14890c8fa62ac081eeeb90f42839637",
+                "reference": "a2fac671f14890c8fa62ac081eeeb90f42839637",
+                "shasum": ""
+            },
+            "require": {
+                "php": "^7.2|^8.0"
+            },
+            "require-dev": {
+                "overtrue/phplint": "^1.0.0",
+                "phpbench/phpbench": "^0.13.0|1.0.0-alpha3",
+                "phpstan/phpstan": "^1.0|^2.0",
+                "phpunit/phpunit": "^7.0|^8.0|^9.0",
+                "squizlabs/php_codesniffer": "^3.0"
+            },
+            "suggest": {
+                "ext-gmp": "GMP extension provides the fastest encoding and decoding."
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Tuupola\\": "src"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Mika Tuupola",
+                    "email": "tuupola@appelsiini.net",
+                    "homepage": "https://appelsiini.net/",
+                    "role": "Developer"
+                }
+            ],
+            "description": "Base58 encoder and decoder for arbitrary data",
+            "homepage": "https://github.com/tuupola/base58",
+            "keywords": [
+                "base58"
+            ],
+            "support": {
+                "issues": "https://github.com/tuupola/base58/issues",
+                "source": "https://github.com/tuupola/base58/tree/2.2.0"
+            },
+            "time": "2025-12-29T07:13:44+00:00"
         },
         {
             "name": "vlucas/phpdotenv",
