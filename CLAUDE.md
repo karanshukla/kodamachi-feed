@@ -41,6 +41,8 @@ The event JSON is decoded once, by hand, and matched on the raw array. `Post::fr
 
 Tempest routes `#[Get]`-attributed controllers in `app/Api`. `FeedService::getFeed()` reads `posts` ordered by `indexed_at DESC, uri DESC` and returns a cursor of the last row's `indexed_at` in milliseconds.
 
+The skeleton is sent with `Cache-Control: private, max-age=60` so no shared cache holds one caller's response for another, and `describeFeedGenerator` with `public, max-age=3600`.
+
 There is no in-process feed cache, unlike the TypeScript version. A per-worker cache would be near-useless under FrankenPHP (any worker may serve any request) and the query is a single indexed range scan over a table that holds tens of rows.
 
 ### Two cursors, two units
@@ -59,7 +61,10 @@ Do not confuse them.
 - Output and input classes are flat, not nested: `DescribeFeedGenerator\DescribeFeedGeneratorOutput`, not `DescribeFeedGenerator\Output`. The same applies to `GetFeedSkeletonOutput`, `PutRecordInput`, `DeleteRecordInput`. The published libphpsky-feed example uses the old nested names and will not compile against current `dev-main`.
 - Build the meta client with `ATProtoMetaClient::default($client)`. The constructor triggers a deprecation even when you pass a client, and Tempest escalates deprecations to exceptions outside production.
 - `ATProtoClientBuilder` points session creation at bsky.social. For an account on a third-party PDS that is wrong, so `ATProtoMetaClientInitializer` assembles `AuthAwareClient` by hand with `CreateSession`/`RefreshSession` aimed via `withEndpoint()`.
-- The Jetstream client in libphpsky has no reconnect, no read timeout, and picks a host at random, so `App\Jetstream` does not use it.
+- The Jetstream client in libphpsky has no reconnect, no read timeout, and picks a host at random, so `App\Jetstream` does not use it. Its native `subscribeRepos` subscription has the same gaps, and decodes CBOR for every commit on the network rather than letting Jetstream filter server-side.
+- Every action defaults to `https://bsky.social`. Anything that touches the publisher's repo needs `withEndpoint($config->pdsUrl)`, or an account on a third-party PDS gets its writes sent to the wrong server.
+- Hydrating a `PostView` drops the record's `embed`, which is where alt text lives. `BackfillService` uses `rawQuery()` and matches on the raw record for that reason.
+- `uploadBlob` takes no request body, so `FeedService` uploads the avatar as a raw PSR-7 request through `$metaClient->getClient()`, which still attaches the session.
 
 ### Tempest specifics
 
@@ -84,6 +89,8 @@ Four tables, all in `app/Database`:
 | `did_documents` | resolved DID documents, with `fetched_at` |
 | `rate_limits` | fixed-window counters |
 
+The collector sets `journal_mode = WAL` on start. The mode is stored in the file, so it covers the web process too, and it lets web workers read while the collector writes.
+
 The last two are in the database rather than in process memory because any worker may serve any request: an in-process cache would re-resolve the same DID on every request, and an in-process counter would give each worker its own allowance and enforce nothing in aggregate.
 
 **Production requirement:** `FEEDGEN_SQLITE_LOCATION` must point at a mounted volume. Railway's filesystem is ephemeral, so anything else is wiped on each deploy, taking the index and the cursor with it.
@@ -94,6 +101,8 @@ The last two are in the database rather than in process memory because any worke
 |---|---|---|
 | `ThrottleMiddleware` | 3000 / 15 min | client address |
 | `GetFeedSkeletonController` | 100 / min | requester DID, or client address when anonymous |
+
+The client address is the *last* `X-Forwarded-For` entry, the one Railway's edge appended, matching Express's `trust proxy 1` in the TypeScript version. Everything before it is caller-supplied, and trusting the first entry let any caller choose a fresh bucket per request.
 
 `getFeedSkeleton` is called by the AppView server-side, so the address-keyed buckets are shared across every viewer behind that AppView rather than being one person's budget. Keep them well above real traffic. A tripped limit shows the user whatever they already had, which reads as "the feed stopped updating" rather than as an error, so a limit that is too tight is worse than no limit.
 

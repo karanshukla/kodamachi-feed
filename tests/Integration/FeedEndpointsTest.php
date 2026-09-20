@@ -54,6 +54,20 @@ final class FeedEndpointsTest extends IntegrationTestCase
     }
 
     #[Test]
+    public function keeps_the_skeleton_out_of_shared_caches(): void
+    {
+        $this->http
+            ->get('/xrpc/app.bsky.feed.getFeedSkeleton?feed=' . urlencode(self::FEED))
+            ->assertOk()
+            ->assertHeaderContains('Cache-Control', 'private, max-age=60, stale-while-revalidate=30');
+
+        $this->http
+            ->get('/xrpc/app.bsky.feed.describeFeedGenerator')
+            ->assertOk()
+            ->assertHeaderContains('Cache-Control', 'public, max-age=3600, stale-while-revalidate=600');
+    }
+
+    #[Test]
     public function serves_an_empty_skeleton_before_anything_is_indexed(): void
     {
         $response = $this->http

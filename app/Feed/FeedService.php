@@ -16,6 +16,8 @@ use Aazsamir\Libphpsky\Model\Meta\ATProtoMetaClient;
 use App\Post\FeedPost;
 use App\Post\FeedPostRepository;
 use DateTimeImmutable;
+use GuzzleHttp\Psr7\Request;
+use RuntimeException;
 
 final readonly class FeedService
 {
@@ -56,22 +58,37 @@ final readonly class FeedService
         );
     }
 
+    /**
+     * putRecord replaces the whole record, so anything not sent here is gone
+     * afterwards. Without FEEDGEN_AVATAR set, republishing removes an avatar
+     * the feed already had.
+     */
     public function publish(): PutRecordOutput
     {
+        $record = Generator::new(
+            // The service DID, not the publisher's: this is where the AppView
+            // sends getFeedSkeleton.
+            did: $this->config->serviceDid,
+            displayName: $this->config->displayName,
+            description: $this->config->description,
+            createdAt: new DateTimeImmutable(),
+        )->toArray();
+
+        if ($this->config->avatarPath !== null) {
+            $record['avatar'] = $this->uploadAvatar($this->config->avatarPath);
+        }
+
         return $this->metaClient
             ->comAtprotoRepoPutRecord()
+            // The record lives on the publisher's PDS. Left at libphpsky's
+            // default, an account hosted anywhere but bsky.social gets its
+            // write sent to the wrong server.
+            ->withEndpoint($this->config->pdsUrl)
             ->procedure(PutRecordInput::new(
                 repo: $this->config->publisherDid,
                 collection: Generator::ID,
                 rkey: $this->config->recordKey,
-                record: Generator::new(
-                    // The service DID, not the publisher's: this is where the
-                    // AppView sends getFeedSkeleton.
-                    did: $this->config->serviceDid,
-                    displayName: $this->config->displayName,
-                    description: $this->config->description,
-                    createdAt: new DateTimeImmutable(),
-                ),
+                record: $record,
                 validate: true,
             ));
     }
@@ -80,11 +97,48 @@ final readonly class FeedService
     {
         return $this->metaClient
             ->comAtprotoRepoDeleteRecord()
+            ->withEndpoint($this->config->pdsUrl)
             ->procedure(DeleteRecordInput::new(
                 repo: $this->config->publisherDid,
                 collection: Generator::ID,
                 rkey: $this->config->recordKey,
             ));
+    }
+
+    /**
+     * libphpsky's uploadBlob takes no body, so the image goes up as a raw
+     * request through the same authenticated client instead.
+     *
+     * @return array<string, mixed> the blob reference to put in the record
+     */
+    private function uploadAvatar(string $path): array
+    {
+        $mimeType = match (strtolower(pathinfo($path, PATHINFO_EXTENSION))) {
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            default => throw new RuntimeException("Avatar must be a PNG or JPEG: {$path}"),
+        };
+
+        $image = @file_get_contents($path);
+
+        if ($image === false) {
+            throw new RuntimeException("Cannot read avatar: {$path}");
+        }
+
+        $response = $this->metaClient->getClient()->sendRequest(new Request(
+            'POST',
+            rtrim($this->config->pdsUrl, '/') . '/xrpc/com.atproto.repo.uploadBlob',
+            ['Content-Type' => $mimeType],
+            $image,
+        ));
+
+        $body = json_decode((string) $response->getBody(), true);
+
+        if ($response->getStatusCode() >= 300 || !is_array($body) || !is_array($body['blob'] ?? null)) {
+            throw new RuntimeException("Avatar upload failed with HTTP {$response->getStatusCode()}");
+        }
+
+        return $body['blob'];
     }
 
     private static function parseCursor(?string $cursor): ?int

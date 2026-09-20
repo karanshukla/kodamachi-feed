@@ -173,6 +173,22 @@ final class ServiceAuthVerifierTest extends TestCase
     }
 
     #[Test]
+    public function resolves_the_bare_did_when_the_issuer_names_a_service(): void
+    {
+        $key = TestKey::secp256k1();
+        $resolver = new FakeDidDocumentResolver([$key->didDocument(self::ISSUER)]);
+        $token = $key->sign([
+            'iss' => self::ISSUER . '#atproto_labeler',
+            'aud' => self::AUDIENCE,
+            'exp' => time() + 60,
+        ]);
+
+        new ServiceAuthVerifier($resolver)->verify($token, self::AUDIENCE, self::LXM);
+
+        self::assertSame([self::ISSUER], $resolver->dids);
+    }
+
+    #[Test]
     public function reads_the_issuer_off_an_unverifiable_token_for_logging(): void
     {
         $token = TestKey::secp256k1()->sign(['iss' => self::ISSUER, 'aud' => 'wrong', 'exp' => 1]);

@@ -19,6 +19,15 @@ $terms = static function (string $key, string $default): array {
 };
 
 $hostname = (string) env('FEEDGEN_HOSTNAME', 'localhost');
+
+// The TypeScript version took the bare host and appended /subscribe itself, so
+// an endpoint carried over from its environment has no path. Connecting to the
+// root of a Jetstream host gets nothing back.
+$endpoint = rtrim((string) env('FEEDGEN_SUBSCRIPTION_ENDPOINT', 'wss://jetstream1.us-east.bsky.network/subscribe'), '/');
+
+if ((parse_url($endpoint, PHP_URL_PATH) ?? '') === '') {
+    $endpoint .= '/subscribe';
+}
 $serviceDid = env('FEEDGEN_SERVICE_DID');
 
 return new FeedConfig(
@@ -35,12 +44,10 @@ return new FeedConfig(
     description: (string) env('FEEDGEN_DESCRIPTION', 'Posts from around Kodamachi.'),
     requireAuth: (bool) env('FEEDGEN_REQUIRE_AUTH', false),
     retentionDays: (int) env('FEEDGEN_RETENTION_DAYS', 30),
-    subscriptionEndpoint: (string) env(
-        'FEEDGEN_SUBSCRIPTION_ENDPOINT',
-        'wss://jetstream1.us-east.bsky.network/subscribe',
-    ),
+    subscriptionEndpoint: $endpoint,
     reconnectDelaySeconds: (int) env('FEEDGEN_RECONNECT_DELAY_SECONDS', 3),
     handle: env('FEEDGEN_HANDLE') ?: null,
     appPassword: env('FEEDGEN_APP_PASSWORD') ?: null,
     pdsUrl: (string) env('FEEDGEN_PDS_URL', 'https://bsky.social'),
+    avatarPath: env('FEEDGEN_AVATAR') ?: null,
 );

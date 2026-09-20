@@ -48,3 +48,14 @@ jobs:
       - name: The DID document resolves
         if: steps.config.outputs.configured == 'true'
         run: curl -sf --max-time 15 "${{ vars.FEED_BASE_URL }}/.well-known/did.json" | jq -e 'has("id")'
+
+      # FrankenPHP's Caddyfile compresses responses; this notices if a config
+      # change ever stops it.
+      - name: Responses are compressed
+        if: steps.config.outputs.configured == 'true'
+        run: |
+          headers=$(curl -s -D - -o /dev/null --max-time 15 -H 'Accept-Encoding: gzip, br, zstd' \
+            "${{ vars.FEED_BASE_URL }}/xrpc/app.bsky.feed.describeFeedGenerator")
+          echo "$headers"
+          echo "$headers" | grep -Eiq '^content-encoding: (gzip|br|zstd)' || \
+            echo "::warning::describeFeedGenerator is not compressed"

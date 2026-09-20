@@ -17,6 +17,9 @@ final class FakeDidDocumentResolver implements DidDocumentResolver
 
     public int $refreshes = 0;
 
+    /** @var list<string> every DID asked for, in order */
+    public array $dids = [];
+
     /** @var list<array<string, mixed>> */
     private array $documents;
 
@@ -28,6 +31,8 @@ final class FakeDidDocumentResolver implements DidDocumentResolver
 
     public function resolve(string $did, bool $forceRefresh = false): array
     {
+        $this->dids[] = $did;
+
         if ($this->documents === []) {
             throw new ServiceAuthException("No document for {$did}");
         }

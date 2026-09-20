@@ -33,6 +33,8 @@ final readonly class FeedConfig
         public ?string $handle = null,
         public ?string $appPassword = null,
         public string $pdsUrl = 'https://bsky.social',
+        /** A PNG or JPEG uploaded as the feed's avatar by feed:publish. */
+        public ?string $avatarPath = null,
     ) {}
 
     public function feedUri(): string
