@@ -7,10 +7,10 @@ namespace App\ServiceAuth;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Firebase\JWT\SignatureInvalidException;
-use KaranShukla\PhpAtprotoIdentity\DidDocumentResolver;
-use KaranShukla\PhpAtprotoIdentity\DidKey;
 use KaranShukla\PhpAtprotoIdentity\IdentityException;
-use KaranShukla\PhpAtprotoIdentity\VerificationKey;
+use KaranShukla\PhpAtprotoIdentity\Key\SigningKeys;
+use KaranShukla\PhpAtprotoIdentity\Key\VerificationKey;
+use KaranShukla\PhpAtprotoIdentity\Resolution\DidDocumentResolver;
 use Throwable;
 
 /**
@@ -139,42 +139,12 @@ final readonly class ServiceAuthVerifier
     private function signingKeys(string $did, bool $forceRefresh): array
     {
         try {
-            $document = $this->resolver->resolve($did, $forceRefresh);
+            return SigningKeys::atproto($this->resolver->resolve($did, $forceRefresh));
         } catch (IdentityException $e) {
             // The identity layer has its own exception type; callers of this
             // verifier should only ever have to catch one.
             throw new ServiceAuthException($e->getMessage(), previous: $e);
         }
-
-        $methods = $document['verificationMethod'] ?? [];
-        $keys = [];
-
-        if (!is_array($methods)) {
-            return [];
-        }
-
-        foreach ($methods as $method) {
-            if (!is_array($method)) {
-                continue;
-            }
-
-            $id = $method['id'] ?? '';
-            $multibase = $method['publicKeyMultibase'] ?? null;
-
-            if (!is_string($id) || !str_ends_with($id, '#atproto') || !is_string($multibase)) {
-                continue;
-            }
-
-            try {
-                $keys[] = DidKey::fromMultibase($multibase);
-            } catch (IdentityException) {
-                // An unsupported key type is not fatal on its own; another
-                // verification method may still be usable.
-                continue;
-            }
-        }
-
-        return $keys;
     }
 
     /**
