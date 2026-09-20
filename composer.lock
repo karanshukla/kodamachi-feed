@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "c1184b44279e3351daf4060fdb73fe1a",
+    "content-hash": "4ae832fe9e4143487a008462e24ff26f",
     "packages": [
         {
             "name": "aazsamir/libphpsky",
@@ -2173,6 +2173,67 @@
                 }
             ],
             "time": "2026-08-24T09:13:11+00:00"
+        },
+        {
+            "name": "karanshukla/php-atproto-identity",
+            "version": "v0.1.1",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/karanshukla/php-atproto-identity.git",
+                "reference": "690310430dce02f84f03b1cd339bd1af85e4c6f6"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/karanshukla/php-atproto-identity/zipball/690310430dce02f84f03b1cd339bd1af85e4c6f6",
+                "reference": "690310430dce02f84f03b1cd339bd1af85e4c6f6",
+                "shasum": ""
+            },
+            "require": {
+                "brick/math": ">=0.12 <1.0",
+                "ext-openssl": "*",
+                "php": ">=8.4",
+                "psr/cache": "^3.0",
+                "psr/http-client": "^1.0",
+                "psr/http-factory": "^1.0"
+            },
+            "require-dev": {
+                "friendsofphp/php-cs-fixer": "^3.95",
+                "guzzlehttp/psr7": "^2.7",
+                "phpstan/phpstan": "^2.1",
+                "phpunit/phpunit": "^11.5",
+                "symfony/cache": ">=7.0 <9.0",
+                "symfony/var-dumper": ">=7.2"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "KaranShukla\\PhpAtprotoIdentity\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Karan Shukla"
+                }
+            ],
+            "description": "ATProto identity: DID document resolution and did:key verification keys",
+            "keywords": [
+                "atproto",
+                "bluesky",
+                "did",
+                "did-key",
+                "did-plc",
+                "did-web",
+                "multibase"
+            ],
+            "support": {
+                "issues": "https://github.com/karanshukla/php-atproto-identity/issues",
+                "source": "https://github.com/karanshukla/php-atproto-identity/tree/v0.1.1"
+            },
+            "time": "2026-09-20T17:19:04+00:00"
         },
         {
             "name": "kelunik/certificate",
@@ -9096,11 +9157,12 @@
     "prefer-lowest": false,
     "platform": {
         "php": ">=8.5",
-        "ext-gmp": "*",
         "ext-openssl": "*",
         "ext-pdo": "*",
         "ext-pcntl": "*"
     },
-    "platform-dev": {},
+    "platform-dev": {
+        "ext-gmp": "*"
+    },
     "plugin-api-version": "2.9.0"
 }

@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Framework;
 
-use App\ServiceAuth\DidDocumentCache;
+use KaranShukla\PhpAtprotoIdentity\DidDocumentCache;
 
 use function Tempest\Database\query;
 

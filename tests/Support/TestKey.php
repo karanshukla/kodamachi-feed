@@ -4,9 +4,9 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\ServiceAuth\DidKey;
-use App\ServiceAuth\VerificationKey;
 use Firebase\JWT\JWT;
+use KaranShukla\PhpAtprotoIdentity\DidKey;
+use KaranShukla\PhpAtprotoIdentity\VerificationKey;
 use OpenSSLAsymmetricKey;
 use RuntimeException;
 

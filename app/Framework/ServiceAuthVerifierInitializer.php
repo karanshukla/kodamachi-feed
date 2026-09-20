@@ -4,10 +4,10 @@ declare(strict_types=1);
 
 namespace App\Framework;
 
-use App\ServiceAuth\HttpDidDocumentResolver;
 use App\ServiceAuth\ServiceAuthVerifier;
 use GuzzleHttp\Client as GuzzleClient;
 use GuzzleHttp\Psr7\HttpFactory;
+use KaranShukla\PhpAtprotoIdentity\HttpDidDocumentResolver;
 use Tempest\Container\Container;
 use Tempest\Container\Initializer;
 

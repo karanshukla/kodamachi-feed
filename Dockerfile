@@ -6,8 +6,11 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# gmp is not optional: service-auth signing keys are published as compressed
-# elliptic-curve points, and decompressing one needs bignum arithmetic.
+# gmp is no longer required -- php-atproto-identity decompresses signing keys
+# through OpenSSL -- but it is kept as a safety net. If this image's OpenSSL
+# ever refuses a compressed SubjectPublicKeyInfo, the package falls back to
+# doing the arithmetic in PHP, which costs ~1.5ms with gmp loaded and ~1.5s
+# without. Drop it once that fallback is confirmed unreachable here.
 RUN install-php-extensions gmp pdo_sqlite intl pcntl opcache
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
