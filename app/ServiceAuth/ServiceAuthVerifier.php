@@ -7,6 +7,10 @@ namespace App\ServiceAuth;
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Firebase\JWT\SignatureInvalidException;
+use KaranShukla\PhpAtprotoIdentity\DidDocumentResolver;
+use KaranShukla\PhpAtprotoIdentity\DidKey;
+use KaranShukla\PhpAtprotoIdentity\IdentityException;
+use KaranShukla\PhpAtprotoIdentity\VerificationKey;
 use Throwable;
 
 /**
@@ -134,7 +138,14 @@ final readonly class ServiceAuthVerifier
      */
     private function signingKeys(string $did, bool $forceRefresh): array
     {
-        $document = $this->resolver->resolve($did, $forceRefresh);
+        try {
+            $document = $this->resolver->resolve($did, $forceRefresh);
+        } catch (IdentityException $e) {
+            // The identity layer has its own exception type; callers of this
+            // verifier should only ever have to catch one.
+            throw new ServiceAuthException($e->getMessage(), previous: $e);
+        }
+
         $methods = $document['verificationMethod'] ?? [];
         $keys = [];
 
@@ -156,7 +167,7 @@ final readonly class ServiceAuthVerifier
 
             try {
                 $keys[] = DidKey::fromMultibase($multibase);
-            } catch (ServiceAuthException) {
+            } catch (IdentityException) {
                 // An unsupported key type is not fatal on its own; another
                 // verification method may still be usable.
                 continue;

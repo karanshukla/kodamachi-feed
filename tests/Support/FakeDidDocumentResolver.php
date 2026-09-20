@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Tests\Support;
 
-use App\ServiceAuth\DidDocumentResolver;
-use App\ServiceAuth\ServiceAuthException;
+use KaranShukla\PhpAtprotoIdentity\DidDocumentResolver;
+use KaranShukla\PhpAtprotoIdentity\IdentityException;
 
 /**
  * Serves a scripted sequence of DID documents, and counts resolutions, so a
@@ -34,7 +34,7 @@ final class FakeDidDocumentResolver implements DidDocumentResolver
         $this->dids[] = $did;
 
         if ($this->documents === []) {
-            throw new ServiceAuthException("No document for {$did}");
+            throw new IdentityException("No document for {$did}");
         }
 
         if ($forceRefresh) {

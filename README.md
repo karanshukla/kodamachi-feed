@@ -6,7 +6,7 @@ Structurally it is a port of [navyfragen-feed](https://github.com/karanshukla/na
 
 ## Requirements
 
-PHP 8.5 or newer, with `gmp`, `openssl`, `pdo_sqlite`, `mbstring`, `intl` and `pcntl`. Tempest 3.2.1 requires 8.5, and `gmp` is not optional: service-auth signing keys are published as compressed elliptic curve points, and decompressing one needs bignum arithmetic.
+PHP 8.5 or newer, with `openssl`, `pdo_sqlite`, `mbstring`, `intl` and `pcntl`. Tempest 3.2.1 requires 8.5. `openssl` is not optional: service-auth signing keys are published as compressed elliptic curve points, and recovering one is OpenSSL's job. No bignum extension is required; `gmp` is used by the test suite, and the Docker image keeps it only as a fallback safety net.
 
 ## Running it locally
 

@@ -17,7 +17,9 @@ php tempest feed:stats        # what is indexed, and where the cursor is
 
 **PHP 8.5 is required.** Tempest 3.2.1 declares `php: ^8.5`, so `composer install` fails outright on 8.4. The Docker base image is pinned to `dunglas/frankenphp:1-php8.5` for the same reason.
 
-**`ext-gmp` is required and is not decoration.** ATProto publishes signing keys as compressed elliptic curve points inside a multibase string. `App\ServiceAuth\VerificationKey` decompresses them by taking a modular square root, which needs bignum arithmetic. Without gmp, every authenticated request fails.
+**`ext-openssl` is required and is not decoration.** ATProto publishes signing keys as compressed elliptic curve points inside a multibase string, and recovering the full point means a modular square root. `karanshukla/php-atproto-identity` does that by handing the key to OpenSSL exactly as published — RFC 5480 permits a compressed `SubjectPublicKeyInfo` — and only falls back to bignum arithmetic on a build whose OpenSSL refuses one. Without openssl, every authenticated request fails.
+
+**`ext-gmp` is a test dependency only.** `Tests\Support\TestKey` encodes base58 with it so the round trip in the test suite crosses an implementation other than the package's own. Production needs no bignum extension.
 
 ## Architecture
 
@@ -110,7 +112,9 @@ The TypeScript version also had an `express-slow-down` layer. It was not ported:
 
 ### Auth
 
-`App\ServiceAuth` verifies the ATProto service-auth JWT. It is deliberately free of Tempest and of application types so it can be lifted into libphpsky as a PR: it depends on PSR-18 plus two small interfaces of its own, `DidDocumentResolver` and `DidDocumentCache`, whose application-specific implementations live in `app/Framework`.
+`App\ServiceAuth` verifies the ATProto service-auth JWT, and is now only the protocol half of that: the claim checks and the key-rotation handling. DID resolution and did:key decoding moved out to [`karanshukla/php-atproto-identity`](https://github.com/karanshukla/php-atproto-identity), which is where `DidDocumentResolver`, `DidDocumentCache`, `HttpDidDocumentResolver` and `VerificationKey` now come from. The verifier itself is still free of Tempest and of application types, so it can be lifted into libphpsky as a PR ([aazsamir/libphpsky#7](https://github.com/aazsamir/libphpsky/pull/7) does exactly that). Tempest-specific implementations stay in `app/Framework`: `DatabaseDidDocumentCache` backs the package's cache interface with the `did_documents` table, and `ServiceAuthVerifierInitializer` wires it up.
+
+Failures from the identity layer are wrapped in `ServiceAuthException` at the verifier boundary, so callers still catch one type.
 
 **Auth is not mandatory** (`FEEDGEN_REQUIRE_AUTH` defaults to `false`) and should stay that way unless something makes the response requester-dependent. The skeleton is byte-identical for every caller, so requiring auth adds no privacy and only decides which clients can load the feed at all. Anything that 401s a whole client shows its users a permanently empty feed, which is indistinguishable from the feed being broken.
 
