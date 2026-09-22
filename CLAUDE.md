@@ -75,6 +75,8 @@ Do not confuse them.
 - `composer.json` must exist in the runtime image. Tempest reads it at boot to work out discovery locations.
 - Outside `ENVIRONMENT=production`, any non-2xx response is replaced by the HTML debug page, JSON body and all. Test error responses with `ENVIRONMENT=production`.
 - Session, cookie and previous-URL middleware are removed in `App\Framework\DisableFrameworkMiddleware`. This is a machine-to-machine JSON API.
+- Production defaults to a full discovery cache, and with none on disk Tempest reflects over every class on every request (~200ms of CPU per skeleton instead of ~20ms). The Dockerfile runs `discovery:generate` at build for that reason. Do not set `DISCOVERY_CACHE` on Railway: any value other than the one the cache was built with makes it invalid, and discovery runs uncached again.
+- Tempest reads and decodes a request body whole, even on a GET. `docker/Caddyfile` caps bodies at 1KB, since no route here takes one.
 
 ### Supervisor specifics
 
@@ -123,5 +125,7 @@ Three traps live in this path:
 - **`lxm`.** The claim postdates the original service-auth spec. A token minted without it comes from an older implementation, not for the wrong method, so `ServiceAuthVerifier` tolerates an absent claim and rejects a present-and-wrong one.
 - **`aud`.** It must equal the service DID. That DID is derived from `FEEDGEN_HOSTNAME` as `did:web:$hostname` rather than generated, so it survives a redeploy. A service DID that changes on each boot fails every authenticated request afterwards.
 - **Key rotation.** A rotated signing key invalidates every cached DID document. When a signature fails against every key in the cached document, the document is refetched once and the signature retried. Only a signature mismatch earns that second resolution: an expired token will not verify against a fresher document either.
+
+**Only `did:plc` tokens are verified while auth is optional.** Verifying a `did:web` token means fetching a document from whatever host the caller names, before the signature is checked, so any caller could hold a worker for the resolver's full timeout or have a 256KB document cached, once per request. With auth optional the verified DID only picks a rate-limit bucket, so a `did:web` requester is served from the anonymous bucket instead. With `FEEDGEN_REQUIRE_AUTH=true` both methods are verified.
 
 Auth failures log the JWT's claimed issuer, decoded without verification, so an account-specific failure is visible in the logs rather than looking like a stale feed.

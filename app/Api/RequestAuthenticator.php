@@ -37,6 +37,16 @@ final readonly class RequestAuthenticator
             return null;
         }
 
+        // With auth optional, a verified DID only picks the rate-limit bucket,
+        // and verifying a did:web token means fetching a document from a host
+        // the caller names. Any caller could then hold a worker for the full
+        // resolver timeout, or have a 256KB document stored, per request.
+        // did:plc only ever resolves against the PLC directory. The rare
+        // did:web account is still served, from the anonymous bucket.
+        if (!$this->config->requireAuth && !str_starts_with(ServiceAuthVerifier::unverifiedIssuer($token) ?? '', 'did:plc:')) {
+            return null;
+        }
+
         try {
             return $this->verifier->verify($token, $this->config->serviceDid, $lxm)->issuer;
         } catch (ServiceAuthException $e) {
