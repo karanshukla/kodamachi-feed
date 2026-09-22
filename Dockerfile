@@ -43,8 +43,15 @@ COPY public ./public
 COPY tempest ./tempest
 
 COPY docker/supervisord.conf /etc/supervisor/supervisord.conf
+COPY docker/Caddyfile /etc/frankenphp/Caddyfile
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint
 RUN chmod +x /usr/local/bin/entrypoint /app/tempest
+
+# Production wants a full discovery cache, and without one on disk Tempest
+# falls back to reflecting over every class on every request: ~200ms of CPU
+# per getFeedSkeleton instead of ~20ms. Built here because the image is
+# rebuilt on every change to app/, so the cache can never go stale.
+RUN ENVIRONMENT=production php /app/tempest discovery:generate
 
 # The database lives here unless FEEDGEN_SQLITE_LOCATION points elsewhere.
 # Mount a volume over it in production: an unmounted path is wiped on every

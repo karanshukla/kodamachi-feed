@@ -1,0 +1,21 @@
+# The image's stock Caddyfile, less the Mercure scaffolding, plus a body cap.
+
+{
+	skip_install_trust
+
+	frankenphp
+}
+
+{$SERVER_NAME:localhost} {
+	root public/
+	encode zstd br gzip
+
+	# Nothing here takes a request body, but Tempest reads and decodes one
+	# whole on any request that sends it: a 100MB body on a GET held ~96MB in
+	# a single worker. Past this cap PHP sees the body cut short instead.
+	request_body {
+		max_size 1KB
+	}
+
+	php_server
+}
