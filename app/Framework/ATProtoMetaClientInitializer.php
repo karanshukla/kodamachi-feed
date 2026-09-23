@@ -57,7 +57,7 @@ final class ATProtoMetaClientInitializer implements Initializer
         return new AuthAwareClient(
             decorated: $transport,
             authConfig: $authConfig,
-            sessionStore: new ATProtoClientBuilder()->defaultSessionStore(),
+            sessionStore: ATProtoClientBuilder::default()->defaultSessionStore(),
             createSession: new CreateSession($transport, $types)->withEndpoint($pdsUrl),
             refreshSession: new RefreshSession($transport, $types)->withEndpoint($pdsUrl),
         );
