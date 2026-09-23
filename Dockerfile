@@ -20,8 +20,7 @@ ENV COMPOSER_ALLOW_SUPERUSER=1
 
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN --mount=type=cache,target=/tmp/composer/cache \
-    composer install --no-dev --no-scripts --no-interaction --optimize-autoloader
+RUN composer install --no-dev --no-scripts --no-interaction --optimize-autoloader
 
 
 FROM dunglas/frankenphp:1-php8.5
