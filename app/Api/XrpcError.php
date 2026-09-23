@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Api;
 
-use Tempest\Http\Responses\Json;
 use Tempest\Http\Status;
 
 /**

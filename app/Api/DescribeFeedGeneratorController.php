@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace App\Api;
 
 use App\Feed\FeedService;
-use Tempest\Http\Responses\Json;
 use Tempest\Router\Get;
 
 final readonly class DescribeFeedGeneratorController
