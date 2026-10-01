@@ -118,6 +118,8 @@ The TypeScript version also had an `express-slow-down` layer. It was not ported:
 
 Failures from the identity layer are wrapped in `ServiceAuthException` at the verifier boundary, so callers still catch one type.
 
+The verifier forces a refetch when a signature fails against every cached key, which is what picks up a key rotation. `RefreshCooldownResolver` skips that forced refetch while the cached document is under 60s old, so repeated bad signatures for one DID cost at most one directory request a minute.
+
 **Auth is not mandatory** (`FEEDGEN_REQUIRE_AUTH` defaults to `false`) and should stay that way unless something makes the response requester-dependent. The skeleton is byte-identical for every caller, so requiring auth adds no privacy and only decides which clients can load the feed at all. Anything that 401s a whole client shows its users a permanently empty feed, which is indistinguishable from the feed being broken.
 
 Three traps live in this path:
