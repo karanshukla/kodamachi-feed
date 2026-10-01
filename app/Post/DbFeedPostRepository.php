@@ -67,6 +67,15 @@ final class DbFeedPostRepository implements FeedPostRepository
         return query('posts')->count()->execute();
     }
 
+    public function countByAuthorSince(string $did, int $since): int
+    {
+        return query('posts')
+            ->count()
+            ->whereRaw('instr(uri, ?) = 1', "at://{$did}/")
+            ->whereRaw('indexed_at >= ?', $since)
+            ->execute();
+    }
+
     public function newestIndexedAt(): ?int
     {
         $row = query('posts')

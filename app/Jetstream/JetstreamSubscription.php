@@ -8,6 +8,7 @@ use Aazsamir\Libphpsky\Client\ATProtoClientInterface;
 use Aazsamir\Libphpsky\Model\App\Bsky\Feed\Post\Post;
 use App\Feed\FeedConfig;
 use App\Feed\FeedMaintenance;
+use App\Post\AuthorCap;
 use App\Post\FeedPost;
 use App\Post\FeedPostRepository;
 use App\Post\PostMatcher;
@@ -59,6 +60,7 @@ final class JetstreamSubscription
         private readonly FeedConfig $config,
         private readonly FeedPostRepository $repository,
         private readonly PostMatcher $matcher,
+        private readonly AuthorCap $authorCap,
         private readonly FeedMaintenance $maintenance,
         private readonly LoggerInterface $logger,
     ) {
@@ -284,9 +286,9 @@ final class JetstreamSubscription
             return;
         }
 
-        $saved = $this->repository->save(new FeedPost(uri: $uri, cid: $cid, indexedAt: $now));
+        $post = new FeedPost(uri: $uri, cid: $cid, indexedAt: $now);
 
-        if (!$saved) {
+        if (!$this->authorCap->allows($post) || !$this->repository->save($post)) {
             return;
         }
 

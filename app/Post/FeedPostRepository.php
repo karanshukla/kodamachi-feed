@@ -22,6 +22,11 @@ interface FeedPostRepository
 
     public function count(): int;
 
+    /**
+     * @param int $since milliseconds; only posts indexed at or after it are counted
+     */
+    public function countByAuthorSince(string $did, int $since): int;
+
     public function newestIndexedAt(): ?int;
 
     /**

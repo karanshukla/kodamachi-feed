@@ -7,6 +7,7 @@ namespace Tests\Unit\Backfill;
 use Aazsamir\Libphpsky\Model\Meta\ATProtoMetaClient;
 use App\Backfill\BackfillService;
 use App\Feed\FeedConfig;
+use App\Post\AuthorCap;
 use App\Post\PostMatcher;
 use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\Test;
@@ -75,6 +76,7 @@ final class BackfillServiceTest extends TestCase
             $config,
             $repository,
             new PostMatcher($config),
+            new AuthorCap($repository),
             ATProtoMetaClient::default(new RecordingATProtoClient([['posts' => $posts]])),
             new NullLogger(),
         )->run();
