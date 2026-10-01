@@ -7,6 +7,7 @@ namespace App\Backfill;
 use Aazsamir\Libphpsky\Client\AuthException;
 use Aazsamir\Libphpsky\Model\Meta\ATProtoMetaClient;
 use App\Feed\FeedConfig;
+use App\Post\AuthorCap;
 use App\Post\FeedPost;
 use App\Post\FeedPostRepository;
 use App\Post\PostMatcher;
@@ -35,6 +36,7 @@ final readonly class BackfillService
         private FeedConfig $config,
         private FeedPostRepository $repository,
         private PostMatcher $matcher,
+        private AuthorCap $authorCap,
         private ATProtoMetaClient $metaClient,
         private LoggerInterface $logger,
     ) {}
@@ -116,13 +118,13 @@ final readonly class BackfillService
                 continue;
             }
 
-            $saved = $this->repository->save(new FeedPost(
+            $feedPost = new FeedPost(
                 uri: $uri,
                 cid: $cid,
                 indexedAt: (int) $indexedAt->format('Uv'),
-            ));
+            );
 
-            if ($saved) {
+            if ($this->authorCap->allows($feedPost) && $this->repository->save($feedPost)) {
                 $indexed++;
                 $this->logger->info('backfilled {uri}', ['uri' => $uri]);
             }

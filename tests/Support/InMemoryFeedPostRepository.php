@@ -51,6 +51,14 @@ final class InMemoryFeedPostRepository implements FeedPostRepository
         return count($this->posts);
     }
 
+    public function countByAuthorSince(string $did, int $since): int
+    {
+        return count(array_filter(
+            $this->posts,
+            static fn (FeedPost $post): bool => $post->authorDid() === $did && $post->indexedAt >= $since,
+        ));
+    }
+
     public function newestIndexedAt(): ?int
     {
         $newest = $this->search(1);

@@ -15,6 +15,11 @@ final readonly class FeedPost
         public int $indexedAt,
     ) {}
 
+    public function authorDid(): string
+    {
+        return explode('/', substr($this->uri, strlen('at://')), 2)[0];
+    }
+
     public function toSkeleton(): SkeletonFeedPost
     {
         return SkeletonFeedPost::new(post: $this->uri);
