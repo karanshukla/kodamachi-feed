@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM dunglas/frankenphp:1-php8.5 AS vendor
+FROM dunglas/frankenphp:1-php8.5.12 AS vendor
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends git unzip \
@@ -23,7 +23,7 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --no-scripts --no-interaction --optimize-autoloader
 
 
-FROM dunglas/frankenphp:1-php8.5
+FROM dunglas/frankenphp:1-php8.5.12
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends supervisor \
