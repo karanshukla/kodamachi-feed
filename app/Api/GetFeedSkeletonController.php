@@ -40,21 +40,47 @@ final readonly class GetFeedSkeletonController
             return XrpcError::invalidRequest('UnsupportedAlgorithm', 'Unsupported algorithm');
         }
 
-        try {
-            $requesterDid = $this->authenticator->authenticate($request, self::NSID);
-        } catch (AuthenticationFailed $e) {
-            return XrpcError::authRequired($e->getMessage());
-        }
+        $clientIp = ClientAddress::of($request);
+        $ipBucket = 'skeleton:ip:' . $clientIp;
 
         // Anonymous callers share a bucket keyed by address, and getFeedSkeleton
         // is called by the AppView server-side, so that bucket covers every
-        // viewer behind a given AppView rather than one person.
-        $bucket = $requesterDid !== null
-            ? 'skeleton:did:' . $requesterDid
-            : 'skeleton:ip:' . ClientAddress::of($request);
+        // viewer behind a given AppView rather than one person. Check the per-IP
+        // limit before authenticating when no Bearer token is presented so
+        // unauthenticated requests are throttled before any auth path runs, and
+        // gate auth attempts behind a per-IP auth budget before outbound DID
+        // resolution so a flood of forged tokens cannot trigger unbounded
+        // directory resolutions.
+        $hasBearer = str_starts_with((string) $request->headers->get('Authorization'), 'Bearer ');
 
-        if (!$this->rateLimiter->hit($bucket, self::REQUESTS_PER_MINUTE, 60)) {
+        if (!$hasBearer) {
+            if (!$this->rateLimiter->hit($ipBucket, self::REQUESTS_PER_MINUTE, 60)) {
+                return XrpcError::rateLimited('Rate limit exceeded. Please try again later.');
+            }
+        } elseif (!$this->rateLimiter->hit('skeleton:auth-attempt:ip:' . $clientIp, self::REQUESTS_PER_MINUTE * 3, 60)) {
             return XrpcError::rateLimited('Rate limit exceeded. Please try again later.');
+        }
+
+        try {
+            $requesterDid = $this->authenticator->authenticate($request, self::NSID);
+        } catch (AuthenticationFailed $e) {
+            if (!$this->rateLimiter->hit($ipBucket, self::REQUESTS_PER_MINUTE, 60)) {
+                return XrpcError::rateLimited('Rate limit exceeded. Please try again later.');
+            }
+
+            return XrpcError::authRequired($e->getMessage());
+        }
+
+        if ($requesterDid !== null) {
+            $bareDid = explode('#', $requesterDid, 2)[0];
+
+            if (!$this->rateLimiter->hit('skeleton:did:' . $bareDid, self::REQUESTS_PER_MINUTE, 60)) {
+                return XrpcError::rateLimited('Rate limit exceeded. Please try again later.');
+            }
+        } elseif ($hasBearer) {
+            if (!$this->rateLimiter->hit($ipBucket, self::REQUESTS_PER_MINUTE, 60)) {
+                return XrpcError::rateLimited('Rate limit exceeded. Please try again later.');
+            }
         }
 
         return new Json(

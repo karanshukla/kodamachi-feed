@@ -41,6 +41,11 @@ final readonly class ServiceAuthVerifier
     ) {}
 
     /**
+     * Strict DID syntax check for did:plc and did:web (no paths, ports, or control chars).
+     */
+    private const string DID_SYNTAX = '/^did:(?:plc:[a-zA-Z0-9._-]{1,252}|web:[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]*[a-zA-Z0-9])?)+)$/D';
+
+    /**
      * @param string $audience the service DID this endpoint answers to
      * @param string|null $lxm the NSID being called, or null to skip the method check
      *
@@ -56,12 +61,33 @@ final readonly class ServiceAuthVerifier
             throw new ServiceAuthException('Token has no DID issuer');
         }
 
+        // `iss` may carry a service fragment (did:plc:abc#atproto_labeler).
+        // The document to resolve is the bare DID's; with the fragment left
+        // on, a did:web issuer resolves against a hostname ending in "#...",
+        // and rate-limit buckets keyed on the verified issuer could otherwise
+        // be multiplied by varying the fragment.
+        $bareDid = explode('#', $issuer, 2)[0];
+
+        if (!self::isValidDid($bareDid)) {
+            throw new ServiceAuthException('Token has an invalid DID issuer');
+        }
+
         if (($claims['aud'] ?? null) !== $audience) {
             throw new ServiceAuthException('Token audience does not match this service');
         }
 
-        if (!isset($claims['exp'])) {
+        $exp = $claims['exp'] ?? null;
+
+        if (!is_int($exp) && !is_float($exp)) {
             throw new ServiceAuthException('Token has no expiry');
+        }
+
+        if ($exp + $this->leeway < time()) {
+            throw new ServiceAuthException('Expired token');
+        }
+
+        if (array_key_exists('lxm', $claims) && $claims['lxm'] !== null && !is_string($claims['lxm'])) {
+            throw new ServiceAuthException('Token has an invalid lxm claim');
         }
 
         $tokenLxm = $claims['lxm'] ?? null;
@@ -70,17 +96,19 @@ final readonly class ServiceAuthVerifier
             throw new ServiceAuthException("Token was minted for {$tokenLxm}, not {$lxm}");
         }
 
-        // `iss` may carry a service fragment (did:plc:abc#atproto_labeler).
-        // The document to resolve is the bare DID's; with the fragment left
-        // on, a did:web issuer resolves against a hostname ending in "#...".
-        $this->checkSignature($jwt, explode('#', $issuer, 2)[0]);
+        $this->checkSignature($jwt, $bareDid);
 
         return new VerifiedToken(
-            issuer: $issuer,
+            issuer: $bareDid,
             audience: $audience,
             lxm: is_string($tokenLxm) ? $tokenLxm : null,
             claims: $claims,
         );
+    }
+
+    public static function isValidDid(string $did): bool
+    {
+        return strlen($did) <= 260 && preg_match(self::DID_SYNTAX, $did) === 1;
     }
 
     /**
